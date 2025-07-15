@@ -1,30 +1,28 @@
-using Unity.Mathematics;
-using UnityEditor.Searcher;
 using UnityEngine;
+using System.Collections;
 
 public class Node : IHeapItem<Node>
 {
-    public Vector3 WorldPosition { get; private set; }
-    public bool Walkable { get; private set; }
-
-    public int GridX;
-    public int GridY;
+    public bool walkable;
+    public Vector3 worldPosition;
+    public int gridX;
+    public int gridY;
     public int movementPenalty;
 
     public int gCost;
     public int hCost;
     public Node parent;
-    private int heapIndex;
-    
-    public Node(Vector3 worldPos, bool walkable, int gridX, int gridY, int penalty)
+    int heapIndex;
+
+    public Node(bool _walkable, Vector3 _worldPos, int _gridX, int _gridY, int _penalty)
     {
-        WorldPosition = worldPos;
-        Walkable = walkable;
-        GridX = gridX;
-        GridY = gridY;
-        movementPenalty = penalty;
+        walkable = _walkable;
+        worldPosition = _worldPos;
+        gridX = _gridX;
+        gridY = _gridY;
+        movementPenalty = _penalty;
     }
-    
+
     public int fCost
     {
         get { return gCost + hCost; }
@@ -32,14 +30,8 @@ public class Node : IHeapItem<Node>
 
     public int HeapIndex
     {
-        get
-        {
-            return heapIndex;
-        }
-        set
-        {
-            heapIndex = value;
-        }
+        get { return heapIndex; }
+        set { heapIndex = value; }
     }
 
     public int CompareTo(Node nodeToCompare)

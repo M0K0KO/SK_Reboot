@@ -1,78 +1,66 @@
-using System.Collections.Generic;
-using System.Numerics;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Serialization;
-using Vector2 = UnityEngine.Vector2;
-using Vector3 = UnityEngine.Vector3;
+using System.Collections;
+using System.Collections.Generic;
 
 public class Grid : MonoBehaviour
 {
     public bool displayGridGizmos;
-    
-    public Vector2 GridWorldSize;
-    public Node[,] NodeGrid;
-    public int GridSizeX { get; private set; }
-    public int GridSizeY { get; private set; }
-    public float NodeRadius;
-    [FormerlySerializedAs("ObstacleMask")] public LayerMask UnwalkableMask;
-    public LayerMask WalkableMask;
-    Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>();
-    private float _nodeDiameter;
-
+    public LayerMask unwalkableMask;
+    public Vector2 gridWorldSize;
+    public float nodeRadius;
     public TerrainType[] walkableRegions;
     public int obstacleProximityPenalty = 10;
-    
+    Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>();
+    LayerMask walkableMask;
+
+    Node[,] grid;
+
+    float nodeDiameter;
+    int gridSizeX, gridSizeY;
+
     int penaltyMin = int.MaxValue;
     int penaltyMax = int.MinValue;
-    
-    private void Awake()
+
+    void Awake()
     {
-        Init();
-    }
-    
-    private void Init()
-    {
-        _nodeDiameter = NodeRadius * 2;
-        GridSizeX = Mathf.RoundToInt(GridWorldSize.x / _nodeDiameter);
-        GridSizeY = Mathf.RoundToInt(GridWorldSize.y / _nodeDiameter);
+        nodeDiameter = nodeRadius * 2;
+        gridSizeX = Mathf.RoundToInt(gridWorldSize.x / nodeDiameter);
+        gridSizeY = Mathf.RoundToInt(gridWorldSize.y / nodeDiameter);
 
         foreach (TerrainType region in walkableRegions)
         {
-            WalkableMask.value |= region.TerrainMask.value;
-            walkableRegionsDictionary.Add((int)Mathf.Log(region.TerrainMask.value, 2), region.TerrainPenalty);
+            walkableMask.value |= region.terrainMask.value;
+            walkableRegionsDictionary.Add((int)Mathf.Log(region.terrainMask.value, 2), region.terrainPenalty);
         }
+
         CreateGrid();
-
     }
-
 
     public int MaxSize
     {
-        get { return GridSizeX * GridSizeY; }
+        get { return gridSizeX * gridSizeY; }
     }
-    
-    
-    private void CreateGrid()
+
+    void CreateGrid()
     {
-        NodeGrid = new Node[GridSizeX, GridSizeY];
+        grid = new Node[gridSizeX, gridSizeY];
+        Vector3 worldBottomLeft = transform.position - Vector3.right * gridWorldSize.x / 2 -
+                                  Vector3.forward * gridWorldSize.y / 2;
 
-        Vector3 worldBottomLeft = transform.position - Vector3.right * GridWorldSize.x / 2 - Vector3.forward * GridWorldSize.y / 2;
-
-        for (int i = 0; i < GridSizeX; i++)
+        for (int x = 0; x < gridSizeX; x++)
         {
-            for (int j = 0; j < GridSizeY; j++)
+            for (int y = 0; y < gridSizeY; y++)
             {
-                Vector3 worldPoint = worldBottomLeft 
-                                     + (i * _nodeDiameter + NodeRadius) * Vector3.right 
-                                     + (j * _nodeDiameter + NodeRadius) * Vector3.forward;
-                bool walkable = !Physics.CheckSphere(worldPoint, NodeRadius, UnwalkableMask);
+                Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) +
+                                     Vector3.forward * (y * nodeDiameter + nodeRadius);
+                bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius, unwalkableMask));
 
                 int movementPenalty = 0;
 
+
                 Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
                 RaycastHit hit;
-                if (Physics.Raycast(ray, out hit, 100, WalkableMask))
+                if (Physics.Raycast(ray, out hit, 100, walkableMask))
                 {
                     walkableRegionsDictionary.TryGetValue(hit.collider.gameObject.layer, out movementPenalty);
                 }
@@ -81,11 +69,12 @@ public class Grid : MonoBehaviour
                 {
                     movementPenalty += obstacleProximityPenalty;
                 }
-                
-                NodeGrid[i, j] = new Node(worldPoint, walkable, i, j, movementPenalty);
+
+
+                grid[x, y] = new Node(walkable, worldPoint, x, y, movementPenalty);
             }
         }
-        
+
         BlurPenaltyMap(3);
     }
 
@@ -94,28 +83,28 @@ public class Grid : MonoBehaviour
         int kernelSize = blurSize * 2 + 1;
         int kernelExtents = (kernelSize - 1) / 2;
 
-        int[,] penaltiesHorizontalPass = new int[GridSizeX, GridSizeY];
-        int[,] penaltiesVerticalPass = new int[GridSizeX, GridSizeY];
+        int[,] penaltiesHorizontalPass = new int[gridSizeX, gridSizeY];
+        int[,] penaltiesVerticalPass = new int[gridSizeX, gridSizeY];
 
-        for (int y = 0; y < GridSizeY; y++)
+        for (int y = 0; y < gridSizeY; y++)
         {
             for (int x = -kernelExtents; x <= kernelExtents; x++)
             {
                 int sampleX = Mathf.Clamp(x, 0, kernelExtents);
-                penaltiesHorizontalPass[0, y] += NodeGrid[sampleX, y].movementPenalty;
+                penaltiesHorizontalPass[0, y] += grid[sampleX, y].movementPenalty;
             }
 
-            for (int x = 1; x < GridSizeX; x++)
+            for (int x = 1; x < gridSizeX; x++)
             {
-                int removeIndex = Mathf.Clamp(x - kernelExtents - 1, 0, GridSizeX);
-                int addIndex = Mathf.Clamp(x + kernelExtents, 0, GridSizeX - 1);
+                int removeIndex = Mathf.Clamp(x - kernelExtents - 1, 0, gridSizeX);
+                int addIndex = Mathf.Clamp(x + kernelExtents, 0, gridSizeX - 1);
 
                 penaltiesHorizontalPass[x, y] = penaltiesHorizontalPass[x - 1, y] -
-                    NodeGrid[removeIndex, y].movementPenalty + NodeGrid[addIndex, y].movementPenalty;
+                    grid[removeIndex, y].movementPenalty + grid[addIndex, y].movementPenalty;
             }
         }
 
-        for (int x = 0; x < GridSizeX; x++)
+        for (int x = 0; x < gridSizeX; x++)
         {
             for (int y = -kernelExtents; y <= kernelExtents; y++)
             {
@@ -124,17 +113,17 @@ public class Grid : MonoBehaviour
             }
 
             int blurredPenalty = Mathf.RoundToInt((float)penaltiesVerticalPass[x, 0] / (kernelSize * kernelSize));
-            NodeGrid[x, 0].movementPenalty = blurredPenalty;
+            grid[x, 0].movementPenalty = blurredPenalty;
 
-            for (int y = 1; y < GridSizeY; y++)
+            for (int y = 1; y < gridSizeY; y++)
             {
-                int removeIndex = Mathf.Clamp(y - kernelExtents - 1, 0, GridSizeY);
-                int addIndex = Mathf.Clamp(y + kernelExtents, 0, GridSizeY - 1);
+                int removeIndex = Mathf.Clamp(y - kernelExtents - 1, 0, gridSizeY);
+                int addIndex = Mathf.Clamp(y + kernelExtents, 0, gridSizeY - 1);
 
                 penaltiesVerticalPass[x, y] = penaltiesVerticalPass[x, y - 1] -
                     penaltiesHorizontalPass[x, removeIndex] + penaltiesHorizontalPass[x, addIndex];
                 blurredPenalty = Mathf.RoundToInt((float)penaltiesVerticalPass[x, y] / (kernelSize * kernelSize));
-                NodeGrid[x, y].movementPenalty = blurredPenalty;
+                grid[x, y].movementPenalty = blurredPenalty;
 
                 if (blurredPenalty > penaltyMax)
                 {
@@ -147,57 +136,56 @@ public class Grid : MonoBehaviour
                 }
             }
         }
-        
-        
-        Debug.Log(penaltyMax + ": Max + Min :" + penaltyMin);
     }
 
-    public List<Node> GetNeighbors(Node node)
+    public List<Node> GetNeighbours(Node node)
     {
-        List<Node> neighbors = new List<Node>();
+        List<Node> neighbours = new List<Node>();
 
         for (int x = -1; x <= 1; x++)
         {
             for (int y = -1; y <= 1; y++)
             {
-                if (x == 0 && y == 0) continue;
-                
-                int neighborX = node.GridX + x;
-                int neighborY = node.GridY + y;
+                if (x == 0 && y == 0)
+                    continue;
 
-                if (neighborX >= 0 && neighborX < GridSizeX && neighborY >= 0 && neighborY < GridSizeY) 
-                    neighbors.Add(NodeGrid[neighborX, neighborY]);
+                int checkX = node.gridX + x;
+                int checkY = node.gridY + y;
+
+                if (checkX >= 0 && checkX < gridSizeX && checkY >= 0 && checkY < gridSizeY)
+                {
+                    neighbours.Add(grid[checkX, checkY]);
+                }
             }
         }
-        
-        return neighbors;
+
+        return neighbours;
     }
-    
-    public Node GetNodeFromWorldPoint(Vector3 worldPos)
+
+
+    public Node NodeFromWorldPoint(Vector3 worldPosition)
     {
-        float percentX = (worldPos.x + GridWorldSize.x / 2) / GridWorldSize.x;
-        float percentY = (worldPos.z + GridWorldSize.y / 2) / GridWorldSize.y;
-        
+        float percentX = (worldPosition.x + gridWorldSize.x / 2) / gridWorldSize.x;
+        float percentY = (worldPosition.z + gridWorldSize.y / 2) / gridWorldSize.y;
         percentX = Mathf.Clamp01(percentX);
         percentY = Mathf.Clamp01(percentY);
-        
-        int x = Mathf.RoundToInt((GridSizeX-1) * percentX);
-        int y = Mathf.RoundToInt((GridSizeY-1) * percentY);
-        return NodeGrid[x, y];
+
+        int x = Mathf.RoundToInt((gridSizeX - 1) * percentX);
+        int y = Mathf.RoundToInt((gridSizeY - 1) * percentY);
+        return grid[x, y];
     }
 
-
-    private void OnDrawGizmos()
+    void OnDrawGizmos()
     {
-        Gizmos.DrawWireCube(transform.position, new Vector3(GridWorldSize.x, 1, GridWorldSize.y));
-
-        if (NodeGrid != null && displayGridGizmos)
+        Gizmos.DrawWireCube(transform.position, new Vector3(gridWorldSize.x, 1, gridWorldSize.y));
+        if (grid != null && displayGridGizmos)
         {
-            foreach (Node n in NodeGrid)
+            foreach (Node n in grid)
             {
-                Gizmos.color = Color.Lerp(Color.white, Color.black, Mathf.InverseLerp(penaltyMin, penaltyMax, n.movementPenalty));
-                Gizmos.color = (n.Walkable) ? Gizmos.color : Color.red;
-                Gizmos.DrawCube(n.WorldPosition, Vector3.one * (_nodeDiameter));
+                Gizmos.color = Color.Lerp(Color.white, Color.black,
+                    Mathf.InverseLerp(penaltyMin, penaltyMax, n.movementPenalty));
+                Gizmos.color = (n.walkable) ? Gizmos.color : Color.red;
+                Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter));
             }
         }
     }
@@ -205,7 +193,7 @@ public class Grid : MonoBehaviour
     [System.Serializable]
     public class TerrainType
     {
-        public LayerMask TerrainMask;
-        [FormerlySerializedAs("terrainPenalty")] public int TerrainPenalty;
+        public LayerMask terrainMask;
+        public int terrainPenalty;
     }
 }
