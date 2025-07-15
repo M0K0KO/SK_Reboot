@@ -2,20 +2,52 @@ using Unity.Mathematics;
 using UnityEditor.Searcher;
 using UnityEngine;
 
-public class Node
+public class Node : IHeapItem<Node>
 {
     public Vector3 WorldPosition { get; private set; }
     public bool Walkable { get; private set; }
 
-    public Node(Vector3 worldPos, bool walkable)
+    public int GridX;
+    public int GridY;
+
+    public int gCost;
+    public int hCost;
+    public Node parent;
+    private int heapIndex;
+    
+    public Node(Vector3 worldPos, bool walkable, int gridX, int gridY)
     {
         WorldPosition = worldPos;
         Walkable = walkable;
+        GridX = gridX;
+        GridY = gridY;
     }
     
-    
-    public void SetCenterPosition(Vector3 position) => WorldPosition = position;
+    public int fCost
+    {
+        get { return gCost + hCost; }
+    }
 
-    public void BlockNode() => Walkable = true;
-    public void UnblockNode() => Walkable = false;
+    public int HeapIndex
+    {
+        get
+        {
+            return heapIndex;
+        }
+        set
+        {
+            heapIndex = value;
+        }
+    }
+
+    public int CompareTo(Node nodeToCompare)
+    {
+        int compare = fCost.CompareTo(nodeToCompare.fCost);
+        if (compare == 0)
+        {
+            compare = hCost.CompareTo(nodeToCompare.hCost);
+        }
+
+        return -compare;
+    }
 }
