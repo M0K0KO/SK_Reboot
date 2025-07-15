@@ -34,9 +34,9 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - Obstacle
-  - 
+  - Grass
+  - UnWalkable
+  - Road
   m_SortingLayers:
   - name: Default
     uniqueID: 0
