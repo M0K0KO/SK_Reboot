@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -20,7 +18,7 @@ public class PathFindiningSystem : MonoBehaviour
     private PathfindingGrid grid;
 
     [BurstCompile]
-    private struct ProcessPathJob : IJob
+    public struct ProcessPathJob : IJob
     {
         public struct NodeCost : IEquatable<NodeCost>, IComparable<NodeCost>
         {

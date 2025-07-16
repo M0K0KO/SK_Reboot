@@ -1,4 +1,4 @@
-using System.Diagnostics;
+/*using System.Diagnostics;
 using UnityEngine;
 
 public class GridBuilder : MonoBehaviour
@@ -39,7 +39,7 @@ public class GridBuilder : MonoBehaviour
 				print($"Took: {stopWatch.ElapsedMilliseconds}ms");
 				stopWatch.Stop();
 			}
-		} else /*if(Input.GetKeyDown(KeyCode.Space))*/{
+		} else /*if(Input.GetKeyDown(KeyCode.Space))#1#{
 			stopWatch.Restart();
 			currentRequest = new PathFindingRequest(tracked.position, target.position);
 
@@ -112,7 +112,7 @@ public class GridBuilder : MonoBehaviour
 
 					Gizmos.DrawWireCube(grid.GetNodePosition(x, y), new Vector3(grid.nodeSize, 0.01f, grid.nodeSize));
 				}
-			}*/
+			}#1#
 
 			if (path != null && !path.failed) {
 
@@ -128,4 +128,4 @@ public class GridBuilder : MonoBehaviour
 	private bool CheckCube (Vector3 pos, float radius) {
 		return Physics.CheckBox(pos + (Vector3.up * radius), Vector3.one * radius, Quaternion.identity, ~walkable, QueryTriggerInteraction.Ignore);
 	}
-}
+}*/
