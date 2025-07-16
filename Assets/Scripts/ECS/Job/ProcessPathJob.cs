@@ -52,8 +52,6 @@ public struct ProcessPathJob : IJob
 
     public PathfindingGrid grid;
     public NativeList<int2> result;
-    public NativeBinaryHeap<NodeCost> open;
-    public NativeHashMap<int2, NodeCost> closed;
     public float3 srcPosition;
     public float3 dstPosition;
 
@@ -67,83 +65,104 @@ public struct ProcessPathJob : IJob
             return;
         }
 
+        
+        var open = new NativeBinaryHeap<NodeCost>(
+            (int)(grid.width * grid.height / grid.nodeSize / 2), 
+            Allocator.Temp);
+        var closed = new NativeHashMap<int2, NodeCost>(
+            (int)(grid.width * grid.height / grid.nodeSize / 4), 
+            Allocator.Temp);
 
-        open.Add(new NodeCost(startNode, startNode));
 
-        int2 boundsMin = new int2(0, 0);
-        int2 boundsMax = new int2 { x = grid.width, y = grid.height };
-
-        NodeCost currentNode = new NodeCost(startNode, startNode);
-
-        while (open.Count > 0)
+        try
         {
-            currentNode = open.RemoveFirst();
+            open.Add(new NodeCost(startNode, startNode));
 
-            if (!closed.TryAdd(currentNode.idx, currentNode))
-                break;
+            int2 boundsMin = new int2(0, 0);
+            int2 boundsMax = new int2 { x = grid.width, y = grid.height };
 
-            if (math.all(currentNode.idx == endNode))
+            NodeCost currentNode = new NodeCost(startNode, startNode);
+
+            while (open.Count > 0)
             {
-                break;
-            }
+                currentNode = open.RemoveFirst();
 
-            for (int xC = -1; xC <= 1; xC++)
-            {
-                for (int yC = -1; yC <= 1; yC++)
+                if (!closed.TryAdd(currentNode.idx, currentNode))
+                    break;
+
+                if (math.all(currentNode.idx == endNode))
                 {
-                    int2 newIdx = +currentNode.idx + new int2(xC, yC);
+                    break;
+                }
 
-                    if (math.all(newIdx >= boundsMin & newIdx < boundsMax))
+                for (int xC = -1; xC <= 1; xC++)
+                {
+                    for (int yC = -1; yC <= 1; yC++)
                     {
-                        Node neighbor = grid.GetNode(newIdx.x, newIdx.y);
+                        int2 newIdx = +currentNode.idx + new int2(xC, yC);
 
-                        NodeCost newCost = new NodeCost(newIdx, currentNode.idx);
-
-                        if (!neighbor.walkable || closed.TryGetValue(newIdx, out NodeCost _))
+                        if (math.all(newIdx >= boundsMin & newIdx < boundsMax))
                         {
-                            continue;
-                        }
+                            Node neighbor = grid.GetNode(newIdx.x, newIdx.y);
 
-                        int newGCost = currentNode.gCost + NodeDistance(currentNode.idx, newIdx);
+                            NodeCost newCost = new NodeCost(newIdx, currentNode.idx);
 
-                        newCost.gCost = newGCost;
-                        newCost.hCost = NodeDistance(newIdx, endNode);
-
-
-                        int oldIdx = open.IndexOf(newCost);
-                        if (oldIdx >= 0)
-                        {
-                            if (newGCost < open[oldIdx].gCost)
+                            if (!neighbor.walkable || closed.TryGetValue(newIdx, out NodeCost _))
                             {
-                                open.RemoveAt(oldIdx);
-                                open.Add(newCost);
+                                continue;
                             }
-                        }
-                        else
-                        {
-                            if (open.Count < open.Capacity)
+
+                            int newGCost = currentNode.gCost + NodeDistance(currentNode.idx, newIdx);
+
+                            newCost.gCost = newGCost;
+                            newCost.hCost = NodeDistance(newIdx, endNode);
+
+
+                            int oldIdx = open.IndexOf(newCost);
+                            if (oldIdx >= 0)
                             {
-                                open.Add(newCost);
+                                if (newGCost < open[oldIdx].gCost)
+                                {
+                                    open.RemoveAt(oldIdx);
+                                    open.Add(newCost);
+                                }
                             }
                             else
                             {
-                                return;
+                                if (open.Count < open.Capacity)
+                                {
+                                    open.Add(newCost);
+                                }
+                                else
+                                {
+                                    return;
+                                }
                             }
                         }
                     }
                 }
-            }
-        } //while end
+            } //while end
 
-        while (!math.all(currentNode.idx == currentNode.origin))
-        {
-            result.Add(currentNode.idx);
-            if (!closed.TryGetValue(currentNode.origin, out NodeCost next))
+            if (!math.all(currentNode.idx == endNode))
             {
-                return;
+                return; 
             }
+            
+            while (!math.all(currentNode.idx == currentNode.origin))
+            {
+                result.Add(currentNode.idx);
+                if (!closed.TryGetValue(currentNode.origin, out NodeCost next))
+                {
+                    return;
+                }
 
-            currentNode = next;
+                currentNode = next;
+            }
+        }
+        finally
+        {
+            open.Dispose();
+            closed.Dispose();
         }
     } //execute end
 

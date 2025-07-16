@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Transforms;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))] 
 [UpdateAfter(typeof(PathfindingCompletionSystem))]
@@ -16,12 +17,14 @@ partial struct PathfindingFailureCleanupSystem : ISystem
     {       
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-        
-        foreach (var (request, entity) in SystemAPI.Query<RefRO<PathRequest>>().WithEntityAccess())
+
+        foreach (var (pathFinder, localTransform) in
+                 SystemAPI.Query<RefRW<PathFinder>, RefRO<LocalTransform>>())
         {
-            if (request.ValueRO.requestStatus == RequestStatus.Failed)
+            if (pathFinder.ValueRO.status == PathStatus.Failed)
             {
-                ecb.RemoveComponent<PathRequest>(entity);
+                pathFinder.ValueRW.currentTargetPosition = localTransform.ValueRO.Position;
+                pathFinder.ValueRW.status = PathStatus.Idle;
             }
         }
     }

@@ -23,6 +23,7 @@ public partial class GridGizmoSystem : SystemBase
         
         GridGizmoDrawer.WalkablePositions.Clear();
         GridGizmoDrawer.UnwalkablePositions.Clear();
+        GridGizmoDrawer.PathWaypoints.Clear();
         GridGizmoDrawer.NodeSize = gridData.nodeSize;
 
         for (int x = 0; x < gridData.width; x++)
@@ -39,6 +40,17 @@ public partial class GridGizmoSystem : SystemBase
                 else
                 {
                     GridGizmoDrawer.UnwalkablePositions.Add(nodePosition);
+                }
+            }
+        }
+
+        foreach (var pathFinder in SystemAPI.Query<RefRO<PathFinder>>())
+        {
+            if (pathFinder.ValueRO.status == PathStatus.Ready)
+            {
+                for (int i = 0; i < pathFinder.ValueRO.pathBuffer.Length; i++)
+                {
+                    GridGizmoDrawer.PathWaypoints.Add(gridData.GetNodePosition(pathFinder.ValueRO.pathBuffer[i]));
                 }
             }
         }
