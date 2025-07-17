@@ -26,11 +26,13 @@ partial struct PathfindingCompletionSystem : ISystem
 
         foreach (var (pathFinder, entity) in SystemAPI.Query<RefRW<PathFinder>>().WithEntityAccess())
         {
+            // Path Job이 끝났는지 진행중인지 확인
             if (pathFinder.ValueRO.status != PathStatus.InProgress) continue;
             if (!pathFinder.ValueRO.jobHandle.IsCompleted) continue;
             
-            pathFinder.ValueRW.jobHandle.Complete();
+            pathFinder.ValueRW.jobHandle.Complete(); // 끝!
             
+            // 결과를 반환해주기 위해 하나 생성
             var pathResult = pathFinder.ValueRO.pathBuffer;
             if (pathResult.Length > 0)
             {
@@ -42,6 +44,12 @@ partial struct PathfindingCompletionSystem : ISystem
                 }
 
                 pathFinder.ValueRW.status = PathStatus.Ready;
+                
+                // Path를 찾았고, 이동만 하면 됨 -> PathFollower를 넣어줌
+                ecb.AddComponent(entity, new PathFollower
+                {
+                    WaypointIndex = 0,
+                });
             }
             else
             {

@@ -705,7 +705,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26ecc306952c355488943dc51aa3b156, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DrawPath: 1
+  DrawPath: 0
   DrawWeightMap: 0
 --- !u!4 &1729455069
 Transform:

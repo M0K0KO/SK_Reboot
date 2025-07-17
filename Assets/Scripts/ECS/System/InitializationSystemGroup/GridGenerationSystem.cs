@@ -16,7 +16,6 @@ partial struct GridGenerationSystem : ISystem
         state.RequireForUpdate<PathfindingGridSingleton>();
     }
 
-    [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
         state.Enabled = false;
