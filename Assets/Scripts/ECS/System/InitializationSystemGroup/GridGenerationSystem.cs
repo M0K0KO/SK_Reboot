@@ -8,6 +8,8 @@ using UnityEngine;
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 partial struct GridGenerationSystem : ISystem
 {
+    public const int obstacleProximityPenalty = 10;
+    
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -19,8 +21,9 @@ partial struct GridGenerationSystem : ISystem
     {
         state.Enabled = false;
         
+        var singletonEntity = SystemAPI.GetSingletonEntity<PathfindingGridSingleton>();
         var gridConfig = SystemAPI.GetSingletonRW<PathfindingGridSingleton>().ValueRO.gridConfig;
-        
+        var penaltyBuffer = SystemAPI.GetBuffer<MovementPenaltyElement>(singletonEntity);
         var nodeArray = new NativeArray<Node>(gridConfig.width * gridConfig.height, Allocator.Persistent);
 
         for (int x = 0; x < gridConfig.width; x++)
@@ -37,10 +40,20 @@ partial struct GridGenerationSystem : ISystem
                 
                 bool isWalkable = false;
                 float yPosition = 0;
-                
+                int movementPenalty = 0;
+
                 if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, gridConfig.gridBuildHeight * 2, gridConfig.walkableLayers))
                 {
                     yPosition = hit.point.y;
+                    
+                    foreach (var penaltyElement in penaltyBuffer)
+                    {
+                        if ((1 << hit.collider.gameObject.layer & penaltyElement.LayerMaskValue) != 0)
+                        {
+                            movementPenalty = penaltyElement.Penalty;
+                            break; // 첫 번째로 일치하는 가중치를 적용
+                        }
+                    }
 
                     bool isObstructed = Physics.CheckBox(
                         hit.point + (Vector3.up * gridConfig.nodeRadius), 
@@ -50,18 +63,22 @@ partial struct GridGenerationSystem : ISystem
                         QueryTriggerInteraction.Ignore);
                     
                     isWalkable = !isObstructed;
+                    if (isObstructed) movementPenalty += obstacleProximityPenalty;
                 }
                 
                 int index = y * gridConfig.width + x;
                 nodeArray[index] = new Node
                 {
                     walkable = isWalkable,
-                    yPosition = yPosition
+                    yPosition = yPosition,
+                    movementPenalty = movementPenalty,
                 };
             }
         }
 
-        var singletonEntity = SystemAPI.GetSingletonEntity<PathfindingGridSingleton>();
+        int blurSize = 3;
+        GridWeightBlurUtility.BlurPenaltyMap(ref nodeArray, gridConfig.width, gridConfig.height, blurSize);
+
         state.EntityManager.AddComponentData(singletonEntity, new PathfindingGrid
         {
             worldOffset = gridConfig.worldOffset,

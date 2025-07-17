@@ -26,7 +26,7 @@ partial struct PathfindingCompletionSystem : ISystem
 
         foreach (var (pathFinder, entity) in SystemAPI.Query<RefRW<PathFinder>>().WithEntityAccess())
         {
-            if (pathFinder.ValueRO.status != PathStatus.InProgress)
+            if (pathFinder.ValueRO.status != PathStatus.InProgress) continue;
             if (!pathFinder.ValueRO.jobHandle.IsCompleted) continue;
             
             pathFinder.ValueRW.jobHandle.Complete();

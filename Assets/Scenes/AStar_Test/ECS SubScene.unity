@@ -403,7 +403,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1367013954034918833, guid: 9ceb85725950f634fbb95039ae7a48e3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 45.9
       objectReference: {fileID: 0}
     - target: {fileID: 1367013954034918833, guid: 9ceb85725950f634fbb95039ae7a48e3, type: 3}
       propertyPath: m_LocalPosition.y
@@ -411,7 +411,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1367013954034918833, guid: 9ceb85725950f634fbb95039ae7a48e3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 42.1
       objectReference: {fileID: 0}
     - target: {fileID: 1367013954034918833, guid: 9ceb85725950f634fbb95039ae7a48e3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1000,6 +1000,15 @@ MonoBehaviour:
   walkableLayers:
     serializedVersion: 2
     m_Bits: 2684354615
+  movementPenaltyLayers:
+  - layerMask:
+      serializedVersion: 2
+      m_Bits: 2147483648
+    penalty: 0
+  - layerMask:
+      serializedVersion: 2
+      m_Bits: 536870912
+    penalty: 5
 --- !u!1 &1659172533
 GameObject:
   m_ObjectHideFlags: 0

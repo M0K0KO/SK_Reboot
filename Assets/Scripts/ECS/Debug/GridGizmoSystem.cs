@@ -24,6 +24,11 @@ public partial class GridGizmoSystem : SystemBase
         GridGizmoDrawer.WalkablePositions.Clear();
         GridGizmoDrawer.UnwalkablePositions.Clear();
         GridGizmoDrawer.PathWaypoints.Clear();
+        GridGizmoDrawer.WeightMap.Clear();
+        
+        GridGizmoDrawer.MinPenalty = int.MaxValue;
+        GridGizmoDrawer.MaxPenalty = int.MinValue;
+
         GridGizmoDrawer.NodeSize = gridData.nodeSize;
 
         for (int x = 0; x < gridData.width; x++)
@@ -32,7 +37,23 @@ public partial class GridGizmoSystem : SystemBase
             {
                 var node = gridData.GetNode(x, y);
                 float3 nodePosition = gridData.GetNodePosition(x, y);
+                
+                GridGizmoDrawer.WeightMap.Add(new WeightDebug
+                {
+                    Position = nodePosition,
+                    Weight = node.movementPenalty,
+                });
 
+                if (node.movementPenalty < GridGizmoDrawer.MinPenalty)
+                {
+                    GridGizmoDrawer.MinPenalty = node.movementPenalty;
+                }
+
+                if (node.movementPenalty > GridGizmoDrawer.MaxPenalty)
+                {
+                    GridGizmoDrawer.MaxPenalty = node.movementPenalty;
+                }
+                
                 if (node.walkable)
                 {
                     GridGizmoDrawer.WalkablePositions.Add(nodePosition);

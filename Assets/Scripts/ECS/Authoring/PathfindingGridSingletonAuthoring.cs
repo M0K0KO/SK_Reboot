@@ -3,6 +3,14 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Serialization;
+
+[Serializable]
+public class LayerPenalty
+{
+    public LayerMask layerMask;
+    public int penalty;
+}
 
 public class PathfindingGridSingletonAuthoring : MonoBehaviour
 {
@@ -11,8 +19,9 @@ public class PathfindingGridSingletonAuthoring : MonoBehaviour
     public float gridBuildHeight = 100f;
     public float nodeRadius = 0.5f;
 
-    [Header("CollisionSettings")] 
     public LayerMask walkableLayers;
+
+    public LayerPenalty[] movementPenaltyLayers;
     
     
     public class Baker : Baker<PathfindingGridSingletonAuthoring>
@@ -25,6 +34,16 @@ public class PathfindingGridSingletonAuthoring : MonoBehaviour
             int width = Mathf.CeilToInt(authoring.gridSize.x / nodeDiameter);
             int height = Mathf.CeilToInt(authoring.gridSize.y / nodeDiameter);
 
+            var penaltyBuffer = AddBuffer<MovementPenaltyElement>(entity);
+            foreach (var layerPenalty in authoring.movementPenaltyLayers)
+            {
+                penaltyBuffer.Add(new MovementPenaltyElement
+                {
+                    LayerMaskValue = layerPenalty.layerMask.value,
+                    Penalty = layerPenalty.penalty
+                });
+            }
+            
             AddComponent(entity, new PathfindingGridSingleton
             {
                 gridConfig =
@@ -120,4 +139,11 @@ public struct Node
 {
     public bool walkable;
     public float yPosition;
+    public int movementPenalty;
+}
+
+public struct MovementPenaltyElement : IBufferElementData
+{
+    public int LayerMaskValue;
+    public int Penalty;
 }

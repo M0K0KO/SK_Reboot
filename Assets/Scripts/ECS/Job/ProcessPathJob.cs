@@ -112,7 +112,7 @@ public struct ProcessPathJob : IJob
                                 continue;
                             }
 
-                            int newGCost = currentNode.gCost + NodeDistance(currentNode.idx, newIdx);
+                            int newGCost = currentNode.gCost + NodeDistance(currentNode.idx, newIdx) + neighbor.movementPenalty;
 
                             newCost.gCost = newGCost;
                             newCost.hCost = NodeDistance(newIdx, endNode);
