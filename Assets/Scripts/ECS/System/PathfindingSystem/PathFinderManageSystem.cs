@@ -26,6 +26,7 @@ partial struct PathFinderManageSystem : ISystem
             {
                 // 클릭해서 들어온 targetPos가 walkable한 node인지 확인
                 int2 targetNodeIndex = _pathfindingGrid.GetNodeIndex(pathFinder.ValueRO.currentTargetPosition);
+                if (targetNodeIndex.x < 0 || targetNodeIndex.y < 0) continue;
                 Node targetNode = _pathfindingGrid.GetNode(targetNodeIndex.x, targetNodeIndex.y);
 
                 if (!targetNode.walkable) continue;

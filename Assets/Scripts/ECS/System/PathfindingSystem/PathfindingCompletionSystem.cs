@@ -30,7 +30,7 @@ partial struct PathfindingCompletionSystem : ISystem
             if (pathFinder.ValueRO.status != PathStatus.InProgress) continue;
             if (!pathFinder.ValueRO.jobHandle.IsCompleted) continue;
             
-            pathFinder.ValueRW.jobHandle.Complete(); // 끝!
+            pathFinder.ValueRW.jobHandle.Complete();
             
             // 결과를 반환해주기 위해 하나 생성
             var pathResult = pathFinder.ValueRO.pathBuffer;

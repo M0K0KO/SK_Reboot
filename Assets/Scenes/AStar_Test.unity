@@ -160,7 +160,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 129205591}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a2bcfab724502040a129da575a664ce, type: 3}
+  m_Script: {fileID: 11500000, guid: 78d1eee7737d476e98019174ccea1f80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &350374379
@@ -705,6 +705,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26ecc306952c355488943dc51aa3b156, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DrawGizmo: 1
   DrawPath: 0
   DrawWeightMap: 0
 --- !u!4 &1729455069
@@ -770,6 +771,7 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 730008659}
   - {fileID: 506515766}
   - {fileID: 350374383}
   - {fileID: 129205592}
@@ -777,4 +779,3 @@ SceneRoots:
   - {fileID: 1729455069}
   - {fileID: 467458305}
   - {fileID: 2073007522}
-  - {fileID: 730008659}

@@ -1,5 +1,3 @@
-#if UNITY_EDITOR
-
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,6 +8,15 @@ public partial class GridGizmoSystem : SystemBase
 {
     protected override void OnUpdate()
     {
+        if (GridGizmoDrawer.Instance == null || !GridGizmoDrawer.Instance.DrawGizmo)
+        {
+            GridGizmoDrawer.WalkablePositions.Clear();
+            GridGizmoDrawer.UnwalkablePositions.Clear();
+            GridGizmoDrawer.PathWaypoints.Clear();
+            GridGizmoDrawer.WeightMap.Clear();
+            return;
+        }
+        
         if (!SystemAPI.HasSingleton<PathfindingGrid>())
         {
             return;
@@ -78,4 +85,3 @@ public partial class GridGizmoSystem : SystemBase
     }
 }
 
-#endif // UNITY_EDITOR
