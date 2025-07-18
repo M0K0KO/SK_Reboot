@@ -10,41 +10,11 @@ public class GridBuilder : MonoBehaviour
 	public float maxWalkableAngle = 30;
 	public LayerMask walkable = -1;
 
-	public PathfindingGrid grid;
+	public static PathfindingGrid grid;
 
-	public Transform tracked;
-	public Transform target;
-
-	private PathFindingRequest currentRequest;
-
-	private Path path;
-	private Stopwatch stopWatch = new Stopwatch();
-
-	// Start is called before the first frame update
 	void Start () {
 		grid = BuildGrid();
-		PathFindiningSystem.instance.UpdateGrid(grid);
-	}
-
-
-	private void Update () {
-		if(tracked == null || target == null) {
-			return;
-		}
-
-		if (currentRequest != null) {
-			if (currentRequest.IsDone) {
-				path = currentRequest.GetResult();
-				currentRequest = null;
-				print($"Took: {stopWatch.ElapsedMilliseconds}ms");
-				stopWatch.Stop();
-			}
-		} else /*if(Input.GetKeyDown(KeyCode.Space))*/{
-			stopWatch.Restart();
-			currentRequest = new PathFindingRequest(tracked.position, target.position);
-
-			currentRequest.Queue();
-		}
+		PathFindingSystem.instance.UpdateGrid(grid);
 	}
 
 	private PathfindingGrid BuildGrid () {
@@ -95,8 +65,7 @@ public class GridBuilder : MonoBehaviour
 	private void OnDrawGizmos () {
 		if (Application.isPlaying && grid.width != 0 && grid.height != 0) {
 
-			/*
-			for (int x = 0; x < grid.width; x++) {
+			/*for (int x = 0; x < grid.width; x++) {
 				for (int y = 0; y < grid.height; y++) {
 					Node node = grid.GetNode(x, y);
 
@@ -113,15 +82,6 @@ public class GridBuilder : MonoBehaviour
 					Gizmos.DrawWireCube(grid.GetNodePosition(x, y), new Vector3(grid.nodeSize, 0.01f, grid.nodeSize));
 				}
 			}*/
-
-			if (path != null && !path.failed) {
-
-				Gizmos.color = Color.black;
-
-				foreach(var node in path.nodes) {
-					Gizmos.DrawCube(node, new Vector3(grid.nodeSize, 0.01f, grid.nodeSize));
-				}
-			}
 		}
 	}
 

@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-public class PathFindiningSystem : MonoBehaviour
+public class PathFindingSystem : MonoBehaviour
 {
-    public static PathFindiningSystem instance;
+    public static PathFindingSystem instance;
     private Queue<PathFindingRequest> requests = new Queue<PathFindingRequest>();
     private PathFindingRequest currentRequest;
     private JobHandle jobHandle;
@@ -20,7 +18,7 @@ public class PathFindiningSystem : MonoBehaviour
     private PathfindingGrid grid;
 
     [BurstCompile]
-    private struct ProcessPathJob : IJob
+    private struct ProcessPathJob : IJob // The Job That actually calculates the Path
     {
         public struct NodeCost : IEquatable<NodeCost>, IComparable<NodeCost>
         {
@@ -39,7 +37,7 @@ public class PathFindiningSystem : MonoBehaviour
 
             public int CompareTo(NodeCost other)
             {
-                int compare = fCost().CompareTo(other.fCost());
+                int compare = fCost().CompareTo(other.fCost()); // compare a fCost;
                 if (compare == 0)
                 {
                     compare = hCost.CompareTo(other.hCost);
@@ -106,7 +104,7 @@ public class PathFindiningSystem : MonoBehaviour
                 {
                     for (int yC = -1; yC <= 1; yC++)
                     {
-                        int2 newIdx = +currentNode.idx + new int2(xC, yC);
+                        int2 newIdx = currentNode.idx + new int2(xC, yC);
 
                         if (math.all(newIdx >= boundsMin & newIdx < boundsMax))
                         {
@@ -123,7 +121,6 @@ public class PathFindiningSystem : MonoBehaviour
 
                             newCost.gCost = newGCost;
                             newCost.hCost = NodeDistance(newIdx, endNode);
-
 
                             int oldIdx = open.IndexOf(newCost);
                             if (oldIdx >= 0)
@@ -188,9 +185,7 @@ public class PathFindiningSystem : MonoBehaviour
 
         if (currentRequest != null)
         {
-            //jobHandle.Complete();
-
-            if (jobHandle.IsCompleted || framesProcessed > 3)
+            if (jobHandle.IsCompleted)
             {
                 jobHandle.Complete();
 
@@ -215,7 +210,7 @@ public class PathFindiningSystem : MonoBehaviour
                 currentRequest.result = path;
                 currentRequest.done = true;
 
-                //Dispos job structs
+                //Dispose job structs
                 job.grid.Dispose();
                 job.result.Dispose();
                 job.open.Dispose();

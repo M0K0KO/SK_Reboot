@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public class PathFindingRequest
@@ -24,7 +21,7 @@ public class PathFindingRequest
 
     public void Queue()
     {
-        PathFindiningSystem.instance.QueueJob(this);
+        PathFindingSystem.instance.QueueJob(this);
     }
 
     public Path GetResult()
