@@ -28,7 +28,6 @@ public class UnitPathFinder : MonoBehaviour
         // 현재 이동중
         // 현재 targetPosition이랑 다른 곳에 새로운 Input -> targetPosition 업데이트 -> 현재 path삭제하고 job할당
         
-        
         int2 idx = GridBuilder.grid.GetNodeIndex(MouseScreenPosition.Instance.currentMousePosition);
         Vector3 newTargetPosition = GridBuilder.grid.GetNodePosition(idx.x, idx.y);
         newTargetPosition.y = 0;
@@ -42,13 +41,12 @@ public class UnitPathFinder : MonoBehaviour
 
             currentRequest =
                 new PathFindingRequest(GetPlayerPosition(), targetPosition);
-            PathFindingSystem.instance.QueueJob(currentRequest);
+            currentRequest.Queue();
         }
 
         if (currentRequest != null && currentRequest.IsDone) // request를 올렸고, 끝난 경우
         {
             path = currentRequest.GetResult(); // path에 결과 저장
-            DebugExtension.BoldLog(this.name + "의 pathfind 결과 : " + !path.failed + " | path길이 : " + path.nodes.Count);
             currentRequest = null; // request 비우기
         }
 
@@ -64,7 +62,6 @@ public class UnitPathFinder : MonoBehaviour
 
                 controller.Move(moveDir * (Time.deltaTime * 15f));
 
-                DebugExtension.ColorLog($"{currentPathIndex}", "blue");
                 float distanceToNodeSq = math.distancesq(GetPlayerPosition(), targetNodePosition);
 
                 // 현재 노드에 충분히 가까워지면 다음 노드로
@@ -72,9 +69,6 @@ public class UnitPathFinder : MonoBehaviour
                 {
                     currentPathIndex++;
                 }
-
-                DebugExtension.ColorLog("최종 목표까지 남은 거리 : " + Vector3.Distance(GetPlayerPosition(), targetPosition),
-                    "red");
             }
             else // 모든 경로 노드를 처리했거나 경로가 끝났을 때
             {
@@ -97,14 +91,10 @@ public class UnitPathFinder : MonoBehaviour
                     moveDir.y = 0;
                     moveDir = moveDir.normalized;
                     controller.Move(moveDir * (Time.deltaTime * 15f));
-                    DebugExtension.ColorLog("최종 목표까지 남은 거리 : " + Vector3.Distance(GetPlayerPosition(), targetPosition),
-                        "red");
-                    DebugExtension.ColorLog("마지막 노드 지나 최종 목적지로 이동 중...", "green");
                 }
             }
         }
     }
-
 
     private Vector3 GetPlayerPosition()
     {

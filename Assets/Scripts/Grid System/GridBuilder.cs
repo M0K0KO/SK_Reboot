@@ -14,7 +14,7 @@ public class GridBuilder : MonoBehaviour
 
 	void Start () {
 		grid = BuildGrid();
-		PathFindingSystem.instance.UpdateGrid(grid);
+		PathFindingSystem.Instance.UpdateGrid(grid);
 	}
 
 	private PathfindingGrid BuildGrid () {

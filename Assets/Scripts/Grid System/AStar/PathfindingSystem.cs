@@ -1,24 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using Moko;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
 public class PathFindingSystem : MonoBehaviour
 {
-    public static PathFindingSystem instance;
-    private Queue<PathFindingRequest> requests = new Queue<PathFindingRequest>();
-    private PathFindingRequest currentRequest;
-    private JobHandle jobHandle;
-    private ProcessPathJob job;
-    private int framesProcessed = 0;
+    public static PathFindingSystem Instance;
+    
+    private List<PathFindingRequest> newRequests = new List<PathFindingRequest>();
+    private List<PathFindingRequest> processingRequests = new List<PathFindingRequest>();
 
+    private bool isJobRunning = false;
+    
+    private NativeArray<UnsafeList<int2>> processingResults;
+    private NativeArray<float3> processingSrcPositions;
+    private NativeArray<float3> processingDstPositions;
+    
+    private JobHandle jobHandle;
     private PathfindingGrid grid;
 
     [BurstCompile]
-    private struct ProcessPathJob : IJob // The Job That actually calculates the Path
+    private struct ProcessPathJob : IJobParallelFor // The Job That actually calculates the Path
     {
         public struct NodeCost : IEquatable<NodeCost>, IComparable<NodeCost>
         {
@@ -38,6 +45,7 @@ public class PathFindingSystem : MonoBehaviour
             public int CompareTo(NodeCost other)
             {
                 int compare = fCost().CompareTo(other.fCost()); // compare a fCost;
+
                 if (compare == 0)
                 {
                     compare = hCost.CompareTo(other.hCost);
@@ -49,6 +57,7 @@ public class PathFindingSystem : MonoBehaviour
             public bool Equals(NodeCost other)
             {
                 var b = (this.idx == other.idx);
+
                 return math.all(b);
             }
 
@@ -63,23 +72,30 @@ public class PathFindingSystem : MonoBehaviour
             }
         }
 
+        [ReadOnly]
         public PathfindingGrid grid;
-        public NativeList<int2> result;
-        public NativeBinaryHeap<NodeCost> open;
-        public NativeHashMap<int2, NodeCost> closed;
-        public float3 srcPosition;
-        public float3 dstPosition;
 
-        public void Execute()
+        [ReadOnly]
+        public NativeArray<float3> srcPositions;
+        
+        [ReadOnly]
+        public NativeArray<float3> dstPositions;
+        
+        
+        public NativeArray<UnsafeList<int2>> results;
+
+        public unsafe void Execute(int index)
         {
-            int2 startNode = grid.GetNodeIndex(srcPosition);
-            int2 endNode = grid.GetNodeIndex(dstPosition);
+            NativeBinaryHeap<NodeCost> open = new NativeBinaryHeap<NodeCost>(50000, Allocator.Temp);
+            NativeHashMap<int2, NodeCost> closed = new NativeHashMap<int2, NodeCost>(50000, Allocator.Temp);
+            
+            int2 startNode = grid.GetNodeIndex(srcPositions[index]);
+            int2 endNode = grid.GetNodeIndex(dstPositions[index]);
 
             if (startNode.x == -1 || endNode.x == -1)
             {
                 return;
             }
-
 
             open.Add(new NodeCost(startNode, startNode));
 
@@ -128,6 +144,7 @@ public class PathFindingSystem : MonoBehaviour
                                 if (newGCost < open[oldIdx].gCost)
                                 {
                                     open.RemoveAt(oldIdx);
+
                                     open.Add(newCost);
                                 }
                             }
@@ -137,8 +154,11 @@ public class PathFindingSystem : MonoBehaviour
                                 {
                                     open.Add(newCost);
                                 }
+
                                 else
                                 {
+                                    open.Dispose();
+                                    closed.Dispose();
                                     return;
                                 }
                             }
@@ -147,16 +167,28 @@ public class PathFindingSystem : MonoBehaviour
                 }
             } //while end
 
+
+            var tempPath = new UnsafeList<int2>(256, Allocator.Temp);
             while (!math.all(currentNode.idx == currentNode.origin))
             {
-                result.Add(currentNode.idx);
+                tempPath.Add(currentNode.idx);
+
                 if (!closed.TryGetValue(currentNode.origin, out NodeCost next))
                 {
+                    open.Dispose();
+                    closed.Dispose();
+                    tempPath.Dispose();
                     return;
                 }
-
                 currentNode = next;
             }
+            var resultList = results[index];
+            resultList.AddRange(tempPath.Ptr, tempPath.Length);
+            results[index] = resultList;
+            
+            tempPath.Dispose();
+            open.Dispose();
+            closed.Dispose();
         } //execute end
 
 
@@ -165,6 +197,7 @@ public class PathFindingSystem : MonoBehaviour
             int2 d = nodeA - nodeB;
             int distx = math.abs(d.x);
             int disty = math.abs(d.y);
+
 
             if (distx > disty)
                 return 14 * disty + 10 * (distx - disty);
@@ -176,74 +209,154 @@ public class PathFindingSystem : MonoBehaviour
 
     private void Awake()
     {
-        instance = this;
+        Instance = this;
     }
 
-    private void Update()
+    private void LateUpdate()
     {
-        framesProcessed++;
-
-        if (currentRequest != null)
+        if (isJobRunning)
         {
+            // 처리중인 작업이 모두 끝난 경우
             if (jobHandle.IsCompleted)
             {
                 jobHandle.Complete();
 
-                //make path
-                Path path = new Path();
-
-                if (job.result.Length == 0 ||
-                    Vector3.Distance(currentRequest.dst, job.grid.GetNodePosition(job.result[0])) > 3)
+                if (processingRequests.Count > 0)
                 {
-                    path.failed = true;
-                }
-                else
-                {
-                    path.nodes = new List<Vector3>(job.result.Length);
-
-                    for (int i = job.result.Length - 1; i >= 0; i--)
+                    for (int i = 0; i < processingRequests.Count; i++)
                     {
-                        path.nodes.Add(job.grid.GetNodePosition(job.result[i].x, job.result[i].y));
+                        var originalRequest = processingRequests[i];
+                        UnsafeList<int2> pathResult = processingResults[i];
+
+                        Path path = new Path();
+                        if (pathResult.Length > 0)
+                        {
+                            path.nodes = new List<Vector3>(pathResult.Length);
+                            for (int j = pathResult.Length - 1; j >= 0; j--)
+                            {
+                                path.nodes.Add(grid.GetNodePosition(pathResult[j]));
+                            }
+                        }
+                        else
+                        {
+                            path.failed = true;
+                        }
+
+                        originalRequest.result = path;
+                        originalRequest.done = true;
                     }
                 }
 
-                currentRequest.result = path;
-                currentRequest.done = true;
-
-                //Dispose job structs
-                job.grid.Dispose();
-                job.result.Dispose();
-                job.open.Dispose();
-                job.closed.Dispose();
-                currentRequest = null;
-            }
+                processingSrcPositions.Dispose();
+                processingDstPositions.Dispose();
+                for (int i = 0; i < processingRequests.Count; i++)
+                {
+                    processingResults[i].Dispose();
+                }
+                processingResults.Dispose();
+                processingRequests.Clear();
+                
+                isJobRunning = false;
+            } // 처리중인 작업이 모두 끝난 경우
         }
 
-        //Queue a new job if there are requests
-        if (currentRequest == null && requests.Count > 0 && this.grid.nodeSize > 0)
+        if (!isJobRunning && newRequests.Count > 0)
         {
-            currentRequest = requests.Dequeue();
+            isJobRunning = true;
+            
+            (processingRequests, newRequests) = (newRequests, processingRequests);
+            newRequests.Clear();
 
-            job = new ProcessPathJob()
+            int jobCount = processingRequests.Count;
+            
+            processingSrcPositions = new NativeArray<float3> (jobCount, Allocator.Persistent);
+            processingDstPositions = new NativeArray<float3> (jobCount, Allocator.Persistent);
+            processingResults = new NativeArray<UnsafeList<int2>> (jobCount, Allocator.Persistent);
+
+            for (int i = 0; i < jobCount; i++)
             {
-                srcPosition = currentRequest.src,
-                dstPosition = currentRequest.dst,
-                grid = grid.Copy(Allocator.TempJob),
-                result = new NativeList<int2>(Allocator.TempJob),
-                open = new NativeBinaryHeap<ProcessPathJob.NodeCost>(
-                    (int)(grid.width * grid.height / (grid.nodeSize) / 2), Allocator.TempJob),
-                closed = new NativeHashMap<int2, ProcessPathJob.NodeCost>(128, Allocator.TempJob)
+                processingSrcPositions[i] = processingRequests[i].src;
+                processingDstPositions[i] = processingRequests[i].dst;
+                processingResults[i] = new UnsafeList<int2>(256, Allocator.Persistent);
+            }
+
+            var job = new ProcessPathJob
+            {
+                grid = this.grid,
+                srcPositions = processingSrcPositions,
+                dstPositions = processingDstPositions,
+                results = processingResults
             };
-            jobHandle = job.Schedule();
 
-
-            framesProcessed = 0;
+            jobHandle = job.Schedule(jobCount, 32);
         }
+        
+        /*if (requests.Count > 0 && this.grid.nodeSize > 0)
+        {
+            int jobCount = requests.Count;
+            var srcPositions = new NativeArray<float3>(jobCount, Allocator.TempJob);
+            var dstPositions = new NativeArray<float3>(jobCount, Allocator.TempJob);
+            for (int i = 0; i < jobCount; i++)
+            {
+                srcPositions[i] = requests[i].src;
+                dstPositions[i] = requests[i].dst;
+            }
+            
+            var results = new NativeArray<UnsafeList<int2>>(jobCount, Allocator.TempJob);
+            for (int i = 0; i < jobCount; i++)
+            {
+                results[i] = new UnsafeList<int2>(256, Allocator.TempJob);
+            }
+
+            job = new ProcessPathJob
+            {
+                grid = this.grid,
+                srcPositions = srcPositions,
+                dstPositions = dstPositions,
+                results = results
+            };
+
+            jobHandle = job.Schedule(jobCount, 32);
+            jobHandle.Complete();
+            
+            for (int i = 0; i < jobCount; i++)
+            {
+                var originalRequest = requests[i];
+                UnsafeList<int2> pathResult = results[i];
+                
+                Path path = new Path();
+                if(pathResult.Length > 0)
+                {
+                    path.nodes = new List<Vector3>(pathResult.Length);
+                    for(int j = pathResult.Length - 1; j >= 0; j--)
+                    {
+                        path.nodes.Add(grid.GetNodePosition(pathResult[j]));
+                    }
+                }
+                else
+                {
+                    path.failed = true;
+                }
+                originalRequest.result = path;
+                originalRequest.done = true;
+            }
+            
+            srcPositions.Dispose();
+            dstPositions.Dispose();
+    
+            for (int i = 0; i < jobCount; i++)
+            {
+                results[i].Dispose();
+            }
+            results.Dispose();
+
+            requests.Clear();
+        }*/
     }
 
     public void QueueJob(PathFindingRequest request)
     {
-        requests.Enqueue(request);
+        newRequests.Add(request);
     }
 
     public void UpdateGrid(PathfindingGrid grid)
@@ -259,15 +372,18 @@ public class PathFindingSystem : MonoBehaviour
     private void OnDestroy()
     {
         jobHandle.Complete();
-        job.grid.Dispose();
-
-        if (job.result.IsCreated)
-            job.result.Dispose();
-        if (job.open.items.IsCreated)
-            job.open.Dispose();
-        if (job.closed.IsCreated)
-            job.closed.Dispose();
-
+        
+        if (processingResults.IsCreated)
+        {
+            processingSrcPositions.Dispose();
+            processingDstPositions.Dispose();
+            for (int i = 0; i < processingResults.Length; i++)
+            {
+                processingResults[i].Dispose();
+            }
+            processingResults.Dispose();
+        }
+        
         this.grid.Dispose();
     }
 }

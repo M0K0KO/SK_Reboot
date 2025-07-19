@@ -21,7 +21,7 @@ public class PathFindingRequest
 
     public void Queue()
     {
-        PathFindingSystem.instance.QueueJob(this);
+        PathFindingSystem.Instance.QueueJob(this);
     }
 
     public Path GetResult()
