@@ -230,19 +230,25 @@ public class PathFindingSystem : MonoBehaviour
                         var originalRequest = processingRequests[i];
                         UnsafeList<int2> pathResult = processingResults[i];
 
-                        Path path = new Path();
+                        List<Vector3> nodes = new List<Vector3>(pathResult.Length);
+                        bool isFailed = false;
                         if (pathResult.Length > 0)
                         {
-                            path.nodes = new List<Vector3>(pathResult.Length);
                             for (int j = pathResult.Length - 1; j >= 0; j--)
                             {
-                                path.nodes.Add(grid.GetNodePosition(pathResult[j]));
+                                nodes.Add(grid.GetNodePosition(pathResult[j]));
                             }
+
+                            nodes = SimplifyPath(nodes);
                         }
                         else
                         {
-                            path.failed = true;
+                            isFailed = true;
                         }
+                        Path path = new Path(nodes, processingRequests[i].src, 3f)
+                        {
+                            failed = isFailed
+                        };
 
                         originalRequest.result = path;
                         originalRequest.done = true;
@@ -293,6 +299,34 @@ public class PathFindingSystem : MonoBehaviour
             jobHandle = job.Schedule(jobCount, 32);
         }
     }
+    
+    private List<Vector3> SimplifyPath(List<Vector3> path)
+    {
+        if (path.Count < 2)
+        {
+            return path;
+        }
+
+        List<Vector3> waypoints = new List<Vector3>();
+        Vector3 directionOld = Vector3.zero;
+    
+        waypoints.Add(path[0]); 
+
+        for (int i = 1; i < path.Count - 1; i++)
+        {
+            Vector3 directionNew = (path[i] - path[i-1]).normalized;
+            if (Vector3.Dot(directionNew, directionOld) < 0.99f) 
+            {
+                waypoints.Add(path[i]);
+            }
+            directionOld = directionNew;
+        }
+    
+        waypoints.Add(path[path.Count - 1]); 
+
+        return waypoints;
+    }
+
 
     public void QueueJob(PathFindingRequest request)
     {

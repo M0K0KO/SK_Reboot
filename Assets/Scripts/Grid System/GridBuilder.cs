@@ -74,7 +74,7 @@ public class GridBuilder : MonoBehaviour
 			}
 		}
 
-		BlurCostMap(3);
+		BlurCostMap(5);
 	}
 
 	void BlurCostMap(int blurSize)
@@ -154,17 +154,11 @@ public class GridBuilder : MonoBehaviour
 					}
 					else
 					{
-						// 이동 가능 노드: movePenalty 값에 따라 색상 변경
-						// 페널티 값을 0과 1 사이의 비율로 변환합니다.
-						float penaltyRatio = Mathf.InverseLerp(penaltyMin, penaltyMax, node.moveCost);
-
-						// Color.Lerp를 사용해 녹색(페널티 낮음)과 노란색(페널티 높음) 사이를 보간합니다.
-						Gizmos.color = Color.Lerp(Color.white, Color.black, penaltyRatio);
+						Gizmos.color = Color.Lerp(Color.white, Color.black, 
+							Mathf.InverseLerp(penaltyMin, penaltyMax, node.moveCost));
 						Gizmos.color = new Color(Gizmos.color.r, Gizmos.color.g, Gizmos.color.b, 0.7f); // 투명도 조절
 					}
 
-					// 3. 최종 색상으로 큐브 그리기
-					// DrawCube를 사용해 내부가 채워진 큐브를 그립니다.
 					Gizmos.DrawCube(pathfindingGrid.GetNodePosition(x, y), new Vector3(pathfindingGrid.nodeSize, 1f, pathfindingGrid.nodeSize));
 				}
 			}
