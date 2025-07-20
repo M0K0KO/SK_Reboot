@@ -133,7 +133,9 @@ public class PathFindingSystem : MonoBehaviour
                                 continue;
                             }
 
-                            int newGCost = currentNode.gCost + NodeDistance(currentNode.idx, newIdx);
+                            int newGCost = currentNode.gCost
+                                           + NodeDistance(currentNode.idx, newIdx) 
+                                           + neighbor.moveCost;
 
                             newCost.gCost = newGCost;
                             newCost.hCost = NodeDistance(newIdx, endNode);
@@ -290,68 +292,6 @@ public class PathFindingSystem : MonoBehaviour
 
             jobHandle = job.Schedule(jobCount, 32);
         }
-        
-        /*if (requests.Count > 0 && this.grid.nodeSize > 0)
-        {
-            int jobCount = requests.Count;
-            var srcPositions = new NativeArray<float3>(jobCount, Allocator.TempJob);
-            var dstPositions = new NativeArray<float3>(jobCount, Allocator.TempJob);
-            for (int i = 0; i < jobCount; i++)
-            {
-                srcPositions[i] = requests[i].src;
-                dstPositions[i] = requests[i].dst;
-            }
-            
-            var results = new NativeArray<UnsafeList<int2>>(jobCount, Allocator.TempJob);
-            for (int i = 0; i < jobCount; i++)
-            {
-                results[i] = new UnsafeList<int2>(256, Allocator.TempJob);
-            }
-
-            job = new ProcessPathJob
-            {
-                grid = this.grid,
-                srcPositions = srcPositions,
-                dstPositions = dstPositions,
-                results = results
-            };
-
-            jobHandle = job.Schedule(jobCount, 32);
-            jobHandle.Complete();
-            
-            for (int i = 0; i < jobCount; i++)
-            {
-                var originalRequest = requests[i];
-                UnsafeList<int2> pathResult = results[i];
-                
-                Path path = new Path();
-                if(pathResult.Length > 0)
-                {
-                    path.nodes = new List<Vector3>(pathResult.Length);
-                    for(int j = pathResult.Length - 1; j >= 0; j--)
-                    {
-                        path.nodes.Add(grid.GetNodePosition(pathResult[j]));
-                    }
-                }
-                else
-                {
-                    path.failed = true;
-                }
-                originalRequest.result = path;
-                originalRequest.done = true;
-            }
-            
-            srcPositions.Dispose();
-            dstPositions.Dispose();
-    
-            for (int i = 0; i < jobCount; i++)
-            {
-                results[i].Dispose();
-            }
-            results.Dispose();
-
-            requests.Clear();
-        }*/
     }
 
     public void QueueJob(PathFindingRequest request)

@@ -4,5 +4,5 @@ using System.Collections;
 public struct Node
 {
     public bool walkable;
-    public float yPosition;
+    public int moveCost;
 }

@@ -11,11 +11,9 @@ public struct PathfindingGrid : IDisposable
     public NativeArray<Node> grid;
 
     public float3 GetNodePosition(int x, int y) {
-        float yPos = grid[y * width + x].yPosition;
-
         return new float3 {
             x = worldOffset.x - (nodeSize * width / 2) + (x * nodeSize) + (nodeSize / 2),
-            y = worldOffset.y + yPos,
+            y = worldOffset.y,
             z = worldOffset.z - (nodeSize * height / 2) + (y * nodeSize) + (nodeSize / 2)
         };
     }

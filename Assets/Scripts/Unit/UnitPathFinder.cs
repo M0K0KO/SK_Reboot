@@ -28,8 +28,8 @@ public class UnitPathFinder : MonoBehaviour
         // 현재 이동중
         // 현재 targetPosition이랑 다른 곳에 새로운 Input -> targetPosition 업데이트 -> 현재 path삭제하고 job할당
         
-        int2 idx = GridBuilder.grid.GetNodeIndex(MouseScreenPosition.Instance.currentMousePosition);
-        Vector3 newTargetPosition = GridBuilder.grid.GetNodePosition(idx.x, idx.y);
+        int2 idx = GridBuilder.pathfindingGrid.GetNodeIndex(MouseScreenPosition.Instance.currentMousePosition);
+        Vector3 newTargetPosition = GridBuilder.pathfindingGrid.GetNodePosition(idx.x, idx.y);
         newTargetPosition.y = 0;
 
         bool shouldChangePath = Vector3.Distance(targetPosition, newTargetPosition) > 0.5f; // 현재 targetPosition과 다른 곳인 경우
@@ -37,17 +37,21 @@ public class UnitPathFinder : MonoBehaviour
         if (shouldChangePath)
         {
             targetPosition = newTargetPosition;
-            if (GridBuilder.grid.GetNode(idx.x, idx.y).walkable == false) return; // 걸을 수 없는 곳이면 스킵
+            if (GridBuilder.pathfindingGrid.GetNode(idx.x, idx.y).walkable == false) return; // 걸을 수 없는 곳이면 스킵
 
             currentRequest =
                 new PathFindingRequest(GetPlayerPosition(), targetPosition);
             currentRequest.Queue();
+
+            currentPathIndex = 0;
+            path = null;
         }
 
         if (currentRequest != null && currentRequest.IsDone) // request를 올렸고, 끝난 경우
         {
             path = currentRequest.GetResult(); // path에 결과 저장
             currentRequest = null; // request 비우기
+            currentPathIndex = 0;
         }
 
         if (path != null && !path.failed) // 경로가 존재하고 실패하지 않았을 때만 이동

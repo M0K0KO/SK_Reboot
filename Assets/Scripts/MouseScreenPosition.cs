@@ -6,6 +6,7 @@ public class MouseScreenPosition : MonoBehaviour
     public static MouseScreenPosition Instance;
 
     public Vector3 currentMousePosition { get; private set; }
+    public bool mouseButtonClicked { get; private set; }
 
     private Camera mainCam;
 
@@ -21,6 +22,7 @@ public class MouseScreenPosition : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             currentMousePosition = GetPosition();
+            mouseButtonClicked = true;
         }
     }
 
@@ -38,5 +40,10 @@ public class MouseScreenPosition : MonoBehaviour
         {
             return Vector3.zero;
         }
+    }
+
+    public void ClearMouseButtonInput()
+    {
+        mouseButtonClicked = false;
     }
 }
