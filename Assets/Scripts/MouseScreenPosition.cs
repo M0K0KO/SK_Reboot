@@ -10,6 +10,8 @@ public class MouseScreenPosition : MonoBehaviour
 
     private Camera mainCam;
 
+    private bool isMouseButtonDown = false;
+
     private void Awake()
     {
         Instance = this;
@@ -19,11 +21,7 @@ public class MouseScreenPosition : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButtonDown(1))
-        {
-            currentMousePosition = GetPosition();
-            mouseButtonClicked = true;
-        }
+
     }
 
     private Vector3 GetPosition()

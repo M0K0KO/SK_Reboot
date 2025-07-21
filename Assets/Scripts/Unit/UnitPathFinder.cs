@@ -1,4 +1,4 @@
-using System.Collections;
+/*using System.Collections;
 using Moko;
 using Unity.Mathematics;
 using UnityEngine;
@@ -118,9 +118,9 @@ public class UnitPathFinder : MonoBehaviour
             {
                 Gizmos.DrawCube(node, new Vector3(1f, 1f, 1f));
             }
-        }*/
+        }#1#
         
         if (path != null) path.DrawWithGizmos();
     }
 #endif
-}
+}*/

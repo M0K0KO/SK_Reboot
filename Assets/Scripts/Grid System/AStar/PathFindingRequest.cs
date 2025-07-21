@@ -1,9 +1,12 @@
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class PathFindingRequest
 {
-    public Vector3 src;
-    public Vector3 dst;
+    public readonly int unitIndex;
+    
+    public readonly Vector3 src;
+    public readonly Vector3 dst;
 
     internal bool done;
     internal Path result;
@@ -13,8 +16,9 @@ public class PathFindingRequest
         get => done;
     }
 
-    public PathFindingRequest(Vector3 start, Vector3 end)
+    public PathFindingRequest(int unitIndex, Vector3 start, Vector3 end)
     {
+        this.unitIndex = unitIndex;
         this.src = start;
         this.dst = end;
     }
