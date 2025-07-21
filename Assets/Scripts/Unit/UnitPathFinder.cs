@@ -34,7 +34,9 @@ public class UnitPathFinder : MonoBehaviour
         if (shouldChangePath)
         {
             targetPosition = newTargetPosition;
-            if (GridBuilder.pathfindingGrid.GetNode(idx.x, idx.y).walkable == false) return; // 걸을 수 없는 곳이면 스킵
+            if (idx.y * GridBuilder.pathfindingGrid.width + idx.x < 0
+                || idx.y * GridBuilder.pathfindingGrid.width + idx.x > GridBuilder.pathfindingGrid.width * GridBuilder.pathfindingGrid.height
+                || GridBuilder.pathfindingGrid.GetNode(idx.x, idx.y).walkable == false) return; // 걸을 수 없는 곳이면 스킵
 
             currentRequest =
                 new PathFindingRequest(GetPlayerPosition(), targetPosition);
@@ -56,36 +58,6 @@ public class UnitPathFinder : MonoBehaviour
                 StartCoroutine(FollowPath(currentPath)); // 새로운 경로로 코루틴 시작
             }
         }
-
-        /*if (path != null && !path.failed) // 경로가 존재하고 실패하지 않았을 때만 이동
-        {
-            if (currentPathIndex >= path.nodes.Count)
-            {
-                // 경로의 모든 노드를 통과했으므로 이동을 멈춥니다.
-                path = null; // 경로 완료
-                return;
-            }
-
-            Vector3 targetNodePosition = path.nodes[currentPathIndex];
-            Vector3 moveDir = (targetNodePosition - GetPlayerPosition());
-            moveDir.y = 0;
-        
-            if (moveDir.sqrMagnitude < 0.1f * 0.1f)
-            {
-                currentPathIndex++;
-                return;
-            }
-
-            //controller.Move(moveDir.normalized * (Time.deltaTime * 15f));
-            Quaternion targetRotation = Quaternion.LookRotation(path.nodes[currentPathIndex] - GetPlayerPosition());
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 15f);
-            controller.Move(transform.forward.normalized * (Time.deltaTime * 10f));
-
-            if (math.distancesq(GetPlayerPosition(), targetNodePosition) < 1.0f * 1.0f) 
-            {
-                currentPathIndex++;
-            }
-        }*/
     }
 
     private Vector3 GetPlayerPosition()

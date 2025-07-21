@@ -135,11 +135,8 @@ public class GridBuilder : MonoBehaviour
 	}
 
 	private void OnDrawGizmos () {
-		if (Application.isPlaying)
+		if (Application.isPlaying && DebugSettings.Instance.DrawCostMap)
 		{
-			// 색상 그라데이션 계산을 위한 페널티 최댓값입니다.
-			// 게임에 설정된 가장 큰 movePenalty 값으로 조절해주세요.
-
 			for (int x = 0; x < pathfindingGrid.width; x++)
 			{
 				for (int y = 0; y < pathfindingGrid.height; y++)
@@ -150,13 +147,13 @@ public class GridBuilder : MonoBehaviour
 					if (!node.walkable)
 					{
 						// 이동 불가 노드: 빨간색
-						Gizmos.color = new Color(1, 0, 0, 0.5f);
+						Gizmos.color = new Color(1, 0, 0, 1f);
 					}
 					else
 					{
 						Gizmos.color = Color.Lerp(Color.white, Color.black, 
 							Mathf.InverseLerp(penaltyMin, penaltyMax, node.moveCost));
-						Gizmos.color = new Color(Gizmos.color.r, Gizmos.color.g, Gizmos.color.b, 0.7f); // 투명도 조절
+						Gizmos.color = new Color(Gizmos.color.r, Gizmos.color.g, Gizmos.color.b, 1f); // 투명도 조절
 					}
 
 					Gizmos.DrawCube(pathfindingGrid.GetNodePosition(x, y), new Vector3(pathfindingGrid.nodeSize, 1f, pathfindingGrid.nodeSize));

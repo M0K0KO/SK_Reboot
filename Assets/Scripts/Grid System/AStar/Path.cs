@@ -33,18 +33,17 @@ public class Path
         return new Vector3(v3.x, v3.z);
     }
 
+    #if UNITY_EDITOR
     public void DrawWithGizmos()
     {
-        Gizmos.color = Color.black;
-        foreach (Vector3 p in nodes)
+        if (DebugSettings.Instance.DrawPath)
         {
-            Gizmos.DrawCube(p + Vector3.up, Vector3.one);
-        }
-
-        Gizmos.color = Color.white;
-        foreach (Line l in turnBoundaries)
-        {
-            l.DrawWithGizmos(10);
+            Gizmos.color = Color.black;
+            foreach (Vector3 p in nodes)
+            {
+                Gizmos.DrawCube(p + Vector3.up, Vector3.one);
+            }
         }
     }
+    #endif
 }
