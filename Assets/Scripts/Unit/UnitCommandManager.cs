@@ -15,6 +15,13 @@ public class UnitCommandManager : MonoBehaviour
     private Camera mainCam;
 
     private List<PathFindingRequest> pendingRequests = new List<PathFindingRequest>();
+
+    [Header("Properties")] 
+    [SerializeField] private float unitSpacing = 2f;
+    [SerializeField] private float unitMoveSpeed = 15f;
+    [SerializeField] private float unitRotationSpeed = 20f;
+    [SerializeField] private float unitSeparationRadiusSq = 2f;
+    [SerializeField] private float unitSeparationForce = 2f;
     
     private void Awake()
     {
@@ -34,9 +41,15 @@ public class UnitCommandManager : MonoBehaviour
 
     void LateUpdate()
     {
+        var pathPositions = new NativeArray<float3>(dataManager.positions.Length, Allocator.TempJob);
+        var separationOffsets = new NativeArray<float3>(dataManager.positions.Length, Allocator.TempJob);
+        var hashMap = new NativeParallelMultiHashMap<int, int>(dataManager.positions.Length, Allocator.TempJob);
+
+        
         var moveJob = new UnitMoveJob
         {
             positions = dataManager.positions,
+            nextPositions = pathPositions,
             rotations = dataManager.rotations,
             currentPathNodeIndex = dataManager.currentPathNodeIndex,
             pathLength = dataManager.pathLength,
@@ -45,26 +58,71 @@ public class UnitCommandManager : MonoBehaviour
             allPathNodes = dataManager.allPathNodes,
         
             deltaTime = Time.deltaTime,
-            moveSpeed = 10f,
-            rotationSpeed = 15f,
+            moveSpeed = unitMoveSpeed,
+            rotationSpeed = unitRotationSpeed,
             waypointReachDistanceSq = 0.5f * 0.5f 
         };
 
-        JobHandle moveJobHandle = moveJob.Schedule(dataManager.positions.Length, 32);
+        JobHandle moveJobHandle = moveJob.Schedule(dataManager.positions.Length, 64);
         
+        
+        
+        
+        var registerHashMapJob = new RegisterHashMapJob
+        {
+            isAlive = dataManager.isAlive,
+            positions = dataManager.positions,
+            cellSize = GridBuilder.pathfindingGrid.nodeSize,
+            hashMap = hashMap.AsParallelWriter(),
+        };
+        JobHandle registerHandle = registerHashMapJob.Schedule(dataManager.positions.Length, 64, moveJobHandle);
+        
+        
+        
+        
+        JobHandle seperationDependency = JobHandle.CombineDependencies(moveJobHandle, registerHandle);
+        
+        
+        var separationJob = new UnitSeparationJob
+        {
+            isAlive = dataManager.isAlive,
+            positions = pathPositions,
+            separationRadiusSq = unitSeparationRadiusSq,
+            separationForce = unitSeparationForce,
+            cellSize = GridBuilder.pathfindingGrid.nodeSize,
+            deltaTime = Time.deltaTime,
+            spatialHashMap = hashMap,
+            separationOffsets = separationOffsets,
+            pathLength = dataManager.pathLength,
+        };
+        JobHandle separationHandle = separationJob.Schedule(dataManager.positions.Length, 64, seperationDependency);
+
+
+
+        var applyFinalPositionJob = new ApplyFinalPositionJob
+        {
+            pathPositions = pathPositions,
+            separationOffsets = separationOffsets,
+            finalPositions = dataManager.positions 
+        };
+        JobHandle applyFinalPositionHandle = applyFinalPositionJob.Schedule(dataManager.positions.Length, 64, separationHandle);
+        
+        
+        dataManager.SyncTransforms();
+
         var syncJob = new SyncTransformsJob
         {
             positions = dataManager.positions,
             rotations = dataManager.rotations,
             isAlive = dataManager.isAlive
         };
-
-        dataManager.SyncTransforms();
-        
-        JobHandle syncHandle = syncJob.Schedule(dataManager.transformAccessArray, moveJobHandle);
-        //ScheduleByRef<SyncTransformsJob>(this ref SyncTransformsJob, int, int, JobHandle)
-
+        JobHandle syncHandle = syncJob.Schedule(dataManager.transformAccessArray, applyFinalPositionHandle);
         syncHandle.Complete();
+        
+        
+        pathPositions.Dispose();
+        hashMap.Dispose();
+        separationOffsets.Dispose();
     }
 
 
@@ -127,8 +185,32 @@ public class UnitCommandManager : MonoBehaviour
     
     public void MoveUnits(float3 targetPos)
     {
-        UpdateTargetPos(targetPos);
+        // Get Selected Units
+        var selectedIndices = new NativeList<int>(10000, Allocator.TempJob);
+        var findSelectedUnits = new FindSelectedUnitsJob
+        {
+            isSelected = dataManager.isSelected,
+            selectedUnitIndices = selectedIndices.AsParallelWriter(),
+        };
+        JobHandle findSelectedUnitsHandle = findSelectedUnits.Schedule(dataManager.isSelected.Length, 64);
+        findSelectedUnitsHandle.Complete();
+        Debug.Log($"{selectedIndices.Length} units selected.");
+        
+        // Calculate Formation
+        var formationJob = new CalculateFormationJob
+        {
+            mainTargetPosition = targetPos,
+            selectedUnitIndices = selectedIndices,
+            spacing = unitSpacing,
+            allUnitTargetPositions = dataManager.targetPosition,
+        };
+
+        JobHandle formationJobHandle = formationJob.Schedule();
+        formationJobHandle.Complete();
+        selectedIndices.Dispose();
+        
     
+        // Pathfind
         var pathRequests = new NativeList<PathfindingRequestData>(dataManager.positions.Length, Allocator.TempJob);
 
         var createRequestsJob = new CreatePathRequestsJob
@@ -158,7 +240,11 @@ public class UnitCommandManager : MonoBehaviour
             pendingRequests.Add(request); 
         }
 
-        Debug.Log($"{pathRequests.Length}개의 경로 탐색 요청을 생성했습니다.");
+        if (pathRequests.Length > 0)
+        {
+            Debug.Log($"{pathRequests.Length}개의 경로 탐색 요청을 생성했습니다.");
+        }
+
         pathRequests.Dispose();
     }
     

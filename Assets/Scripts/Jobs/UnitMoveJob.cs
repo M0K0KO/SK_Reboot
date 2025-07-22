@@ -6,7 +6,8 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct UnitMoveJob : IJobParallelFor
 {
-    public NativeArray<float3> positions;
+    [ReadOnly] public NativeArray<float3> positions;
+    public NativeArray<float3> nextPositions;
     public NativeArray<quaternion> rotations;
 
     public NativeArray<int> currentPathNodeIndex;
@@ -23,6 +24,8 @@ public struct UnitMoveJob : IJobParallelFor
 
     public void Execute(int index)
     {
+        nextPositions[index] = positions[index];
+        
         if (!isAlive[index] || pathLength[index] == 0) return;
 
         int currentIdx = currentPathNodeIndex[index];
@@ -60,7 +63,7 @@ public struct UnitMoveJob : IJobParallelFor
 
             moveDirection = math.normalize(moveDirection);
 
-            positions[index] += moveDirection * moveSpeed * deltaTime;
+            nextPositions[index] = currentPosition + moveDirection * moveSpeed * deltaTime;
 
             quaternion targetRotation = quaternion.LookRotation(moveDirection, math.up());
             rotations[index] = math.slerp(rotations[index], targetRotation, rotationSpeed * deltaTime);
