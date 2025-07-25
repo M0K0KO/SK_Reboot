@@ -1,0 +1,39 @@
+#pragma kernel UpdateAnimation 
+
+struct UnitData {
+    float3 position;
+    float4 rotation;
+    float animationFrame;
+    int animationID;
+    float3 padding;
+};
+
+struct AnimationMeta {
+    int animationID;
+    int startFrameIndex;
+    int frameCount;
+    float playbackSpeed;
+};
+
+RWStructuredBuffer<UnitData> _UnitDataBufferRW;
+StructuredBuffer<AnimationMeta> _AnimationMetaBuffer;
+float _DeltaTime;
+uint _InstanceCount;
+
+[numthreads(64,1,1)]
+void UpdateAnimation (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _InstanceCount) return;
+
+    UnitData unit = _UnitDataBufferRW[id.x];
+    AnimationMeta meta = _AnimationMetaBuffer[unit.animationID];
+    
+    unit.animationFrame += meta.playbackSpeed * _DeltaTime;
+    
+    if (unit.animationFrame >= meta.frameCount)
+    {
+        unit.animationFrame -= meta.frameCount;
+    }
+
+    _UnitDataBufferRW[id.x] = unit;
+}

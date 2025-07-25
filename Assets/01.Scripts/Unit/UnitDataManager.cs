@@ -11,29 +11,36 @@ public class UnitDataManager : MonoBehaviour
 {
     
     public static UnitDataManager Instance;
-    
+
+    public int activeUnitCount { get; private set; } = 0;
+
+    [Header("Base Prorperties")]
+    public int maxUnits = 10000;
+    public int maxPathNodes = 10000 * 50;
+    public int maxStateChangeCommands = 10000 * 2; // maxUnits * unitStateCount
     public NativeArray<float3> positions;
     public NativeArray<quaternion> rotations;
     public NativeArray<bool> isSelected;
     public NativeArray<bool> isAlive;
     
-    [Header("Pathfinding")]
+    [Header("Pathfinding Properties")]
     public NativeArray<int> pathDataStartIndex;
     public NativeArray<int> pathLength;
     public NativeArray<int> currentPathNodeIndex;
     public NativeArray<float3> targetPosition; 
     public NativeList<float3> allPathNodes;
-    
-    public TransformAccessArray transformAccessArray;
+    public TransformAccessArray unitTransformAccessArray;
 
+    [Header("StateMachine Prorperties")] 
+    public NativeArray<UnitState> unitState;
+    public NativeArray<int> unitAnimationID;
+    
     public List<Unit> unitReferences;
-    private Queue<int> availableIndices;
+    private Queue<int> availableIndices; // index pooling
 
     void Awake()
     {
         Instance = this;
-        int maxUnits = 10000;
-        int maxPathNodes = maxUnits * 50;
         
         positions = new NativeArray<float3>(maxUnits, Allocator.Persistent);
         rotations = new NativeArray<quaternion>(maxUnits, Allocator.Persistent);
@@ -44,10 +51,11 @@ public class UnitDataManager : MonoBehaviour
         pathLength = new NativeArray<int>(maxUnits, Allocator.Persistent);
         currentPathNodeIndex = new NativeArray<int>(maxUnits, Allocator.Persistent);
         targetPosition = new NativeArray<float3>(maxUnits, Allocator.Persistent);
-
         allPathNodes = new NativeList<float3>(maxPathNodes, Allocator.Persistent);
+        unitTransformAccessArray = new TransformAccessArray(maxUnits);
 
-        transformAccessArray = new TransformAccessArray(maxUnits);
+        unitState = new NativeArray<UnitState>(maxUnits, Allocator.Persistent);
+        unitAnimationID = new NativeArray<int>(maxUnits, Allocator.Persistent);
 
         unitReferences = new List<Unit>(maxUnits);
         availableIndices = new Queue<int>();
@@ -72,7 +80,10 @@ public class UnitDataManager : MonoBehaviour
         targetPosition.Dispose();
         allPathNodes.Dispose();
         
-        transformAccessArray.Dispose();
+        unitState.Dispose();
+        unitAnimationID.Dispose();
+        
+        unitTransformAccessArray.Dispose();
         
         Instance = null;
     }
@@ -85,24 +96,33 @@ public class UnitDataManager : MonoBehaviour
             return -1;
         }
 
+        activeUnitCount++;
+        
         int index = availableIndices.Dequeue();
 
         positions[index] = unit.transform.position;
         rotations[index] = unit.transform.rotation;
         isSelected[index] = false;
         isAlive[index] = true;
-        
+
+        unitState[index] = UnitState.Idle;
+        unitAnimationID[index] = 0;
+
         unitReferences[index] = unit;
         
         return index;
     }
 
-    public void UnregisterUnit(int index)
+    public void UnregisterUnit(int index) // need to be updated
     {
         if (index < 0 || index >= isAlive.Length || !isAlive[index])
         {
             return; 
         }
+     
+        //Debug.Log($"{index}번째 유닛 unregister");
+        
+        activeUnitCount--;
         
         isAlive[index] = false;
         
@@ -117,6 +137,6 @@ public class UnitDataManager : MonoBehaviour
             .Select(unit => unit.transform)
             .ToArray();
     
-        transformAccessArray.SetTransforms(activeTransforms);
+        unitTransformAccessArray.SetTransforms(activeTransforms);
     }
 }

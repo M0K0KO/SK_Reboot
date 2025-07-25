@@ -21,7 +21,7 @@ public class PlayerInputManager : MonoBehaviour
     private bool isRMBPressed;
     private Vector2 selectionStartpos, currentMousePos;
     [SerializeField] private Image selectionBoxImage;
-    private float dragThreshold = 20f;
+    [SerializeField] private float dragThreshold = 20f;
     [SerializeField] private LayerMask unitLayer;
 
     [Header("Alternative Keys")] 
@@ -144,7 +144,11 @@ public class PlayerInputManager : MonoBehaviour
                 UnitCommandManager.Instance.DeselectAllUnits();
             }
 
-            UnitDataManager.Instance.isSelected[hit.collider.GetComponent<Unit>().dataIndex] = true;
+            Unit unit = hit.collider.GetComponent<Unit>();
+            if (unit != null)
+            {
+                UnitDataManager.Instance.isSelected[unit.dataIndex] = true;
+            }
             return true;
         }
         else

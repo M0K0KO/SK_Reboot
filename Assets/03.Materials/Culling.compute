@@ -1,0 +1,46 @@
+#pragma kernel Cull
+
+struct UnitData {
+    float3 position;
+    float4 rotation;
+    float animationFrame;
+    int animationID;
+    float3 padding;
+};
+
+// 입력 버퍼
+StructuredBuffer<UnitData> _UnitDataBuffer;
+
+// 출력 버퍼 (AppendBuffer: 원자적으로 데이터를 추가할 수 있음)
+AppendStructuredBuffer<uint> _VisibleInstanceIndices;
+
+// C#에서 전달받는 변수
+float4 _FrustumPlanes[6];
+uint _InstanceCount;
+
+// 점과 평면 사이의 거리를 계산하는 함수
+float GetDistanceToPlane(float3 targetPoint, float4 plane)
+{
+    return dot(plane.xyz, targetPoint) + plane.w;
+}
+
+[numthreads(64,1,1)]
+void Cull (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _InstanceCount)
+    {
+        return;
+    }
+
+    float3 position = _UnitDataBuffer[id.x].position;
+    
+    for (int i = 0; i < 6; i++)
+    {
+        if (GetDistanceToPlane(position, _FrustumPlanes[i]) < 0) 
+        {
+            return; 
+        }
+    }
+
+    _VisibleInstanceIndices.Append(id.x);
+}

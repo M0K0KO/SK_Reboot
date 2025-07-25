@@ -1,0 +1,30 @@
+#pragma kernel PackData 
+
+struct UnitData {
+    float3 position;
+    float4 rotation;
+    float animationFrame;
+    int animationID;
+    float3 padding;
+};
+
+StructuredBuffer<float3> _PositionBuffer;
+StructuredBuffer<float4> _RotationBuffer;
+StructuredBuffer<int> _AnimationIDBuffer;
+RWStructuredBuffer<UnitData> _UnitDataBufferRW;
+uint _InstanceCount;
+
+[numthreads(64,1,1)]
+void PackData (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _InstanceCount) return;
+    
+    UnitData data = _UnitDataBufferRW[id.x];
+    
+    data.position = _PositionBuffer[id.x];
+    data.rotation = _RotationBuffer[id.x];
+    data.animationID = _AnimationIDBuffer[id.x];
+    data.padding = (float3)0;
+    
+    _UnitDataBufferRW[id.x] = data;
+}

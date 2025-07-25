@@ -6,6 +6,7 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct UnitSeparationJob : IJobParallelFor
 {
+    [ReadOnly] public NativeArray<UnitState> unitState;
     [ReadOnly] public NativeArray<float3> positions;
     [ReadOnly] public NativeArray<bool> isAlive;
     [ReadOnly] public float separationRadiusSq;
@@ -27,6 +28,8 @@ public struct UnitSeparationJob : IJobParallelFor
     
     public void Execute(int index)
     {
+        if (unitState[index] != UnitState.Move) return;
+        
         separationOffsets[index] = float3.zero;
         
         if (!isAlive[index]) return;

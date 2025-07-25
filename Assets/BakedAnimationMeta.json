@@ -1,0 +1,16 @@
+{
+    "metas": [
+        {
+            "animationID": 0,
+            "startFrameIndex": 0,
+            "frameCount": 64,
+            "playbackSpeed": 50.0
+        },
+        {
+            "animationID": 1,
+            "startFrameIndex": 64,
+            "frameCount": 64,
+            "playbackSpeed": 100.0
+        }
+    ]
+}
