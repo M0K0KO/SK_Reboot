@@ -20,6 +20,7 @@ public class UnitDataManager : MonoBehaviour
     public int maxStateChangeCommands = 10000 * 2; // maxUnits * unitStateCount
     public NativeArray<float3> positions;
     public NativeArray<quaternion> rotations;
+    public NativeArray<float3> velocities;
     public NativeArray<bool> isSelected;
     public NativeArray<bool> isAlive;
     
@@ -30,7 +31,8 @@ public class UnitDataManager : MonoBehaviour
     public NativeArray<float3> targetPosition; 
     public NativeList<float3> allPathNodes;
     public TransformAccessArray unitTransformAccessArray;
-
+    public NativeArray<Unity.Mathematics.Random> randoms;
+    
     [Header("StateMachine Prorperties")] 
     public NativeArray<UnitState> unitState;
     public NativeArray<int> unitAnimationID;
@@ -44,6 +46,7 @@ public class UnitDataManager : MonoBehaviour
         
         positions = new NativeArray<float3>(maxUnits, Allocator.Persistent);
         rotations = new NativeArray<quaternion>(maxUnits, Allocator.Persistent);
+        velocities = new NativeArray<float3>(maxUnits, Allocator.Persistent);
         isSelected = new NativeArray<bool>(maxUnits, Allocator.Persistent);
         isAlive = new NativeArray<bool>(maxUnits, Allocator.Persistent);
         
@@ -53,7 +56,8 @@ public class UnitDataManager : MonoBehaviour
         targetPosition = new NativeArray<float3>(maxUnits, Allocator.Persistent);
         allPathNodes = new NativeList<float3>(maxPathNodes, Allocator.Persistent);
         unitTransformAccessArray = new TransformAccessArray(maxUnits);
-
+        randoms = new NativeArray<Unity.Mathematics.Random>(maxUnits, Allocator.Persistent);
+        
         unitState = new NativeArray<UnitState>(maxUnits, Allocator.Persistent);
         unitAnimationID = new NativeArray<int>(maxUnits, Allocator.Persistent);
 
@@ -62,6 +66,7 @@ public class UnitDataManager : MonoBehaviour
 
         for (int i = 0; i < maxUnits; i++)
         {
+            randoms[i] = new Unity.Mathematics.Random((uint)(i + 1) * 0x9F6ABC1); 
             availableIndices.Enqueue(i);
             unitReferences.Add(null);
         }
@@ -71,6 +76,7 @@ public class UnitDataManager : MonoBehaviour
     {
         positions.Dispose();
         rotations.Dispose();
+        velocities.Dispose();
         isSelected.Dispose();
         isAlive.Dispose();
         
@@ -79,6 +85,7 @@ public class UnitDataManager : MonoBehaviour
         currentPathNodeIndex.Dispose();
         targetPosition.Dispose();
         allPathNodes.Dispose();
+        randoms.Dispose();
         
         unitState.Dispose();
         unitAnimationID.Dispose();
@@ -102,6 +109,7 @@ public class UnitDataManager : MonoBehaviour
 
         positions[index] = unit.transform.position;
         rotations[index] = unit.transform.rotation;
+        velocities[index] = float3.zero;
         isSelected[index] = false;
         isAlive[index] = true;
 
