@@ -22,8 +22,7 @@ public class PathFindingSystem : MonoBehaviour
     private NativeArray<float3> processingDstPositions;
     
     private JobHandle jobHandle;
-    private PathfindingGrid grid;
-
+    public PathfindingGrid localGrid;
 
     private void Awake()
     {
@@ -52,7 +51,7 @@ public class PathFindingSystem : MonoBehaviour
                         {
                             for (int j = pathResult.Length - 1; j >= 0; j--)
                             {
-                                nodes.Add(grid.GetNodePosition(pathResult[j]));
+                                nodes.Add(localGrid.GetNodePosition(pathResult[j]));
                             }
 
                             nodes = SimplifyPath(nodes);
@@ -106,7 +105,7 @@ public class PathFindingSystem : MonoBehaviour
 
             var job = new ProcessPathJob
             {
-                grid = this.grid,
+                grid = this.localGrid,
                 srcPositions = processingSrcPositions,
                 dstPositions = processingDstPositions,
                 results = processingResults
@@ -149,14 +148,22 @@ public class PathFindingSystem : MonoBehaviour
         newRequests.Add(request);
     }
 
-    public void UpdateGrid(PathfindingGrid grid)
+    public void UpdateGrid(PathfindingGrid sourceGrid) // 원본 그리드를 sourceGrid로 받음
     {
-        this.grid.Dispose();
-
-        if (grid.nodeSize > 0)
+        // 로컬 그리드가 없거나 크기가 다르면 새로 생성/재할당
+        if (!localGrid.grid.IsCreated || localGrid.grid.Length != sourceGrid.grid.Length)
         {
-            this.grid = grid;
+            if(localGrid.grid.IsCreated) localGrid.grid.Dispose();
+        
+            localGrid = new PathfindingGrid();
+            localGrid.width = sourceGrid.width;
+            localGrid.height = sourceGrid.height;
+            localGrid.nodeSize = sourceGrid.nodeSize;
+            localGrid.grid = new NativeArray<Node>(sourceGrid.grid.Length, Allocator.Persistent);
         }
+    
+        // 원본 데이터(sourceGrid)의 내용을 로컬 복사본(localGrid)으로 복사합니다.
+        localGrid.grid.CopyFrom(sourceGrid.grid);
     }
 
     private void OnDestroy()
@@ -174,6 +181,6 @@ public class PathFindingSystem : MonoBehaviour
             processingResults.Dispose();
         }
         
-        this.grid.Dispose();
+        this.localGrid.Dispose();
     }
 }

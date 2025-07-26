@@ -14,7 +14,7 @@ TagManager:
   - UI
   - 
   - Unit
-  - 
+  - Tower
   - 
   - 
   - 
@@ -36,7 +36,7 @@ TagManager:
   - 
   - 
   - Grass
-  - UnWalkable
+  - 
   - Road
   m_SortingLayers:
   - name: Default

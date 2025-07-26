@@ -19,11 +19,11 @@ public class Unit : MonoBehaviour
             UnitDataManager.Instance.UnregisterUnit(dataIndex);
     }
 
-    private void OnTriggerEnter(Collider other)
+    /*private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.CompareTag("Unit"))
         {
             Debug.Log($"{other.gameObject.name} collided with {dataIndex}");
         }
-    }
+    }*/
 }

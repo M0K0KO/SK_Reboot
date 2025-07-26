@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -11,6 +12,7 @@ public class PlayerInputManager : MonoBehaviour
     private InputAction Move;
     private InputAction UnitCommand;
     private InputAction Shift;
+    private InputAction Select;
 
     [Header("Movement")]
     public Vector2 moveInput { get; private set; }
@@ -24,8 +26,13 @@ public class PlayerInputManager : MonoBehaviour
     [SerializeField] private float dragThreshold = 20f;
     [SerializeField] private LayerMask unitLayer;
 
+    [Header("Interact")] 
+    public Tower selectedTower;
+
     [Header("Alternative Keys")] 
     private bool isShiftPressed;
+
+    [SerializeField] private LayerMask selectableLayer = -1;
     
     private void Awake()
     {
@@ -34,6 +41,8 @@ public class PlayerInputManager : MonoBehaviour
         Move = playerInput.Player.Move;
         UnitCommand = playerInput.Player.UnitCommand;
         Shift = playerInput.Player.Shift;
+        Select = playerInput.Player.Select;
+        
         mainCam = Camera.main;
     }
 
@@ -46,6 +55,8 @@ public class PlayerInputManager : MonoBehaviour
         UnitCommand.canceled += OnUnitCommandCanceled;
         Shift.performed += OnShiftPerformed;
         Shift.canceled += OnShiftCanceled;
+        Select.performed += OnSelectPerformed;
+        Select.canceled += OnSelectCanceled;
     }
 
     void OnDisable()
@@ -57,8 +68,12 @@ public class PlayerInputManager : MonoBehaviour
         UnitCommand.canceled -= OnUnitCommandCanceled;
         Shift.performed -= OnShiftPerformed;
         Shift.canceled -= OnShiftCanceled;
+        Select.performed -= OnSelectPerformed;
+        Select.canceled -= OnSelectCanceled;
     }
 
+
+    private bool followMouse = false;
     void Update()
     {
         if (isRMBPressed)
@@ -92,19 +107,16 @@ public class PlayerInputManager : MonoBehaviour
     {
         moveInput = context.ReadValue<Vector2>();
     }
-    
     private void OnMoveCanceled(InputAction.CallbackContext context)
     {
         moveInput = Vector2.zero;
     }
-    
     private void OnUnitCommandPerformed(InputAction.CallbackContext context)
     {
         isRMBPressed = true;
         isDragging = false;
         selectionStartpos = Mouse.current.position.ReadValue();
     }    
-    
     private void OnUnitCommandCanceled(InputAction.CallbackContext context)
     {
         if (isDragging)
@@ -115,7 +127,7 @@ public class PlayerInputManager : MonoBehaviour
         {
             if (!isPlayerHit())
             {
-                UnitCommandManager.Instance.RequestUnitMove(GetPosition());
+                UnitCommandManager.Instance.RequestUnitMove(GetPositionOnPlane());
             }
         }
 
@@ -123,17 +135,14 @@ public class PlayerInputManager : MonoBehaviour
         isRMBPressed = false;
         isDragging = false;
     }
-
     private void OnShiftPerformed(InputAction.CallbackContext context)
     {
         isShiftPressed = true;
     }
-
     private void OnShiftCanceled(InputAction.CallbackContext context)
     {
         isShiftPressed = false;
     }
-
     private bool isPlayerHit()
     {
         Ray mouseCameraRay = mainCam.ScreenPointToRay(Input.mousePosition);
@@ -156,7 +165,7 @@ public class PlayerInputManager : MonoBehaviour
             return false;
         }
     }
-    private Vector3 GetPosition()
+    private Vector3 GetPositionOnPlane()
     {
         Ray mouseCameraRay = mainCam.ScreenPointToRay(Input.mousePosition);
 
@@ -170,5 +179,31 @@ public class PlayerInputManager : MonoBehaviour
         {
             return Vector3.zero;
         }
+    }
+
+    private void OnSelectPerformed(InputAction.CallbackContext context)
+    {
+        if (selectedTower != null)
+        {
+            selectedTower.OnInteractExit();
+            selectedTower = null;
+        }
+        
+        Ray mouseCameraRay = mainCam.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(mouseCameraRay, out RaycastHit hit, Mathf.Infinity, selectableLayer))
+        {
+            var selectable = GameObjectExtensions.GetInterface<ISelectable>(hit.collider.gameObject);
+            if (selectable != null && selectable.CanInteract())
+            {
+                Debug.Log($"{hit.collider.gameObject.name} is selected");
+                selectedTower = hit.collider.GetComponent<Tower>();
+                selectedTower.OnInteract();
+            }
+        }
+    }
+
+    private void OnSelectCanceled(InputAction.CallbackContext context)
+    {
+        
     }
 }
